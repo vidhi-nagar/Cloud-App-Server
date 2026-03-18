@@ -67,7 +67,7 @@ export const googleLogin = async (req, res) => {
       provider: "google",
       options: {
         // Login ke baad user kahan wapas aayega (aapka frontend URL)
-        redirectTo: "http://localhost:5173",
+        redirectTo: "http://localhost:5174",
       },
     });
 
