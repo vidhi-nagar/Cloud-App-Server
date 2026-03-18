@@ -184,8 +184,11 @@ export const shareItem = async (req, res) => {
 
     if (error) throw error;
 
+    const backendUrl = process.env.BACKEND_URL || "http://localhost:8080";
+    console.log("Mera Backend URL hai:", process.env.BACKEND_URL);
+
     // 3. Unique link generate karein
-    const shareLink = `http://localhost:8080/api/files/shared/${data[0].share_link_id}`;
+    const shareLink = `${backendUrl}/api/files/shared/${data[0].share_link_id}`;
 
     res.status(201).json({
       message: "Item shared successfully",
