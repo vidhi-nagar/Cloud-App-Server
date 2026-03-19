@@ -2,13 +2,17 @@ import { supabase } from "../config/supabase.js";
 import { checkPermission } from "../utils/checkPermission.js";
 
 // 1. Create Folder
+// 1. Create Folder (Updated with Unique Storage Key)
 export const createFolder = async (req, res) => {
   try {
-    const { name, parent_id = null } = req.body; // Agar kisi folder ke andar bana rahe hain toh parent_id aayegi
+    const { name, parent_id = null } = req.body;
     const userId = req.user.id;
 
     if (!name)
       return res.status(400).json({ error: "Folder name is required" });
+
+    // 🔥 FIX: Ek unique storage_key generate karein taaki database error na de
+    const uniqueKey = `folder_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
     const { data, error } = await supabase
       .from("files")
@@ -19,6 +23,7 @@ export const createFolder = async (req, res) => {
           parent_id: parent_id,
           is_folder: true,
           mime_type: "folder",
+          storage_key: uniqueKey, // <--- Ye line add karni hai
         },
       ])
       .select();
@@ -29,6 +34,7 @@ export const createFolder = async (req, res) => {
       .status(201)
       .json({ message: "Folder created successfully", folder: data[0] });
   } catch (err) {
+    // Agar constraint error aaye toh specific message dikhayein
     res.status(500).json({ error: err.message });
   }
 };
