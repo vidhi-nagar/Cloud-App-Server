@@ -5,6 +5,8 @@ export const uploadFile = async (req, res) => {
     const file = req.file;
     const userId = req.user.id;
 
+    const parent_id = req.body.parent_id || null;
+
     if (!file) {
       return res.status(400).json({ error: "Please upload a file" });
     }
@@ -38,6 +40,7 @@ export const uploadFile = async (req, res) => {
           storage_key: filePath, // Match: storage_key
           owner_id: userId, // Match: owner_id
           file_url: urlData.publicUrl, // Match: file_url
+          parent_id: parent_id || null, // 🔥 YEH LINE ADD KARNI HAI
         },
       ])
       .select();
