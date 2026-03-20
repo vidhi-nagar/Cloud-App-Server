@@ -44,31 +44,35 @@ export const createFolder = async (req, res) => {
 export const renameItem = async (req, res) => {
   try {
     const { id } = req.params;
-    const { newName } = req.body;
+    const { newName, parent_id } = req.body;
     const userId = req.user.id;
 
     const hasAccess = await checkPermission(id, userId, "edit");
     if (!hasAccess) {
-      return res
-        .status(403)
-        .json({ error: "You don't have permission to edit this item" });
+      return res.status(403).json({ error: "You don't have permission" });
     }
 
-    if (!newName)
-      return res.status(400).json({ error: "New name is required" });
+    // Build update object dynamically
+    const updateData = {};
+    if (newName !== undefined) updateData.name = newName;
+    if (parent_id !== undefined) updateData.parent_id = parent_id || null;
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: "Nothing to update" });
+    }
 
     const { data, error } = await supabase
       .from("files")
-      .update({ name: newName })
+      .update(updateData)
       .eq("id", id)
-      .eq("owner_id", userId) // Security: Sirf owner hi rename kar sake
+      .eq("owner_id", userId)
       .select();
 
     if (error) throw error;
     if (data.length === 0)
       return res.status(404).json({ error: "Item not found" });
 
-    res.status(200).json({ message: "Renamed successfully", item: data[0] });
+    res.status(200).json({ message: "Updated successfully", item: data[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
