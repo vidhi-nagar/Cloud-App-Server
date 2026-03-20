@@ -8,6 +8,7 @@ import {
   searchFiles,
   uploadFile,
   toggleStar,
+  getFileVersions,
 } from "../controllers/fileController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { upload } from "../middleware/uploadMiddleware.js";
@@ -30,6 +31,7 @@ router.post("/folder", protect, createFolder);
 router.put("/rename/:id", protect, renameItem);
 router.get("/trash", protect, getTrashItems);
 router.get("/my-files", protect, getUserFiles);
+router.get("/versions/:file_id", protect, getFileVersions);
 router.patch("/trash/:id", protect, moveToTrash);
 router.patch("/restore/:id", protect, restoreItem);
 router.patch("/star/:id", protect, toggleStar);

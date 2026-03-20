@@ -4,53 +4,110 @@ export const uploadFile = async (req, res) => {
   try {
     const file = req.file;
     const userId = req.user.id;
-
     const parent_id = req.body.parent_id || null;
 
-    if (!file) {
-      return res.status(400).json({ error: "Please upload a file" });
-    }
+    if (!file) return res.status(400).json({ error: "Please upload a file" });
 
-    // Unique path for storage
     const fileName = `${Date.now()}-${file.originalname}`;
     const filePath = `${userId}/${fileName}`;
 
-    // 1. Supabase Storage Upload
+    // 1. Storage mein upload
     const { data: storageData, error: storageError } = await supabase.storage
       .from("uploads")
-      .upload(filePath, file.buffer, {
-        contentType: file.mimetype,
-      });
+      .upload(filePath, file.buffer, { contentType: file.mimetype });
 
     if (storageError) throw storageError;
 
-    // 2. Public URL nikalna
+    // 2. Public URL
     const { data: urlData } = supabase.storage
       .from("uploads")
       .getPublicUrl(filePath);
 
-    // 3. Database Entry (Exact Column Names matching your DB)
-    const { data: dbData, error: dbError } = await supabase
+    // 3. Check karo kya same naam ki file already exist karti hai (versioning)
+    const { data: existingFile } = await supabase
       .from("files")
-      .insert([
-        {
-          name: file.originalname,
+      .select("id, version_id")
+      .eq("owner_id", userId)
+      .eq("name", file.originalname)
+      .eq("parent_id", parent_id || null)
+      .eq("is_deleted", false)
+      .single();
+
+    if (existingFile) {
+      // ── FILE ALREADY EXISTS → New Version Create Karo ──
+
+      // Kitne versions hain abhi?
+      const { data: versions } = await supabase
+        .from("file_versions")
+        .select("version_number")
+        .eq("file_id", existingFile.id)
+        .order("version_number", { ascending: false })
+        .limit(1);
+
+      const nextVersion =
+        versions && versions.length > 0 ? versions[0].version_number + 1 : 2; // 1st version already file mein hai, toh 2 se start
+
+      // New version record insert karo
+      const { data: versionData, error: versionError } = await supabase
+        .from("file_versions")
+        .insert([
+          {
+            file_id: existingFile.id,
+            version_number: nextVersion,
+            storage_key: filePath,
+            size_bytes: file.size,
+          },
+        ])
+        .select();
+
+      if (versionError) throw versionError;
+
+      // File record update karo (latest info)
+      const { data: updatedFile, error: updateError } = await supabase
+        .from("files")
+        .update({
+          storage_key: filePath,
+          file_url: urlData.publicUrl,
+          size_bytes: file.size,
           mime_type: file.mimetype,
-          size_bytes: file.size, // Match: size_byte
-          storage_key: filePath, // Match: storage_key
-          owner_id: userId, // Match: owner_id
-          file_url: urlData.publicUrl, // Match: file_url
-          parent_id: parent_id || null, // 🔥 YEH LINE ADD KARNI HAI
-        },
-      ])
-      .select();
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingFile.id)
+        .select();
 
-    if (dbError) throw dbError;
+      if (updateError) throw updateError;
 
-    res.status(201).json({
-      message: "File uploaded successfully!",
-      file: dbData[0],
-    });
+      return res.status(201).json({
+        message: `New version (v${nextVersion}) uploaded!`,
+        file: updatedFile[0],
+        version: versionData[0],
+        isNewVersion: true,
+      });
+    } else {
+      // ── NAYA FILE → Normal Upload ──
+      const { data: dbData, error: dbError } = await supabase
+        .from("files")
+        .insert([
+          {
+            name: file.originalname,
+            mime_type: file.mimetype,
+            size_bytes: file.size,
+            storage_key: filePath,
+            owner_id: userId,
+            file_url: urlData.publicUrl,
+            parent_id: parent_id || null,
+          },
+        ])
+        .select();
+
+      if (dbError) throw dbError;
+
+      return res.status(201).json({
+        message: "File uploaded successfully!",
+        file: dbData[0],
+        isNewVersion: false,
+      });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -234,6 +291,55 @@ export const toggleStar = async (req, res) => {
 
     if (error) throw error;
     res.status(200).json({ message: "Star updated", item: data[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getFileVersions = async (req, res) => {
+  try {
+    const { file_id } = req.params;
+    const userId = req.user.id;
+
+    // File owner check
+    const { data: file, error: fileError } = await supabase
+      .from("files")
+      .select(
+        "id, name, owner_id, storage_key, size_bytes, created_at, file_url",
+      )
+      .eq("id", file_id)
+      .eq("owner_id", userId)
+      .single();
+
+    if (fileError || !file) {
+      return res.status(404).json({ error: "File not found" });
+    }
+
+    // Versions fetch karo
+    const { data: versions, error } = await supabase
+      .from("file_versions")
+      .select("*")
+      .eq("file_id", file_id)
+      .order("version_number", { ascending: false });
+
+    if (error) throw error;
+
+    // Current version bhi include karo (version 1 = original)
+    const allVersions = [
+      {
+        id: "current",
+        file_id: file.id,
+        version_number: (versions?.length || 0) + 1,
+        storage_key: file.storage_key,
+        size_bytes: file.size_bytes,
+        created_at: file.created_at,
+        file_url: file.file_url,
+        isCurrent: true,
+      },
+      ...(versions || []),
+    ];
+
+    res.status(200).json({ versions: allVersions, fileName: file.name });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
