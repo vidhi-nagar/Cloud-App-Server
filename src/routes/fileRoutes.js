@@ -7,6 +7,7 @@ import {
   permanentDelete,
   searchFiles,
   uploadFile,
+  toggleStar,
 } from "../controllers/fileController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { upload } from "../middleware/uploadMiddleware.js";
