@@ -10,7 +10,7 @@ export const sendShareEmail = async ({
   permission,
 }) => {
   await resend.emails.send({
-    from: "CloudVault <onboarding@resend.dev>", // free plan mein yahi use karo
+    from: "CloudVault <onboarding@resend.dev>", // 👈 resend.dev add karo
     to: toEmail,
     subject: `${sharedByEmail} ne aapke saath ek file share ki hai`,
     html: `
