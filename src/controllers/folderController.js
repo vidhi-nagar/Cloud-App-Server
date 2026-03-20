@@ -1,3 +1,4 @@
+import { sendShareEmail } from "../utils/sendEmail.js";
 import { supabase } from "../config/supabase.js";
 import { checkPermission } from "../utils/checkPermission.js";
 
@@ -164,7 +165,7 @@ export const shareItem = async (req, res) => {
     // 1. Check karein ki kya file exists karti hai aur owner wahi hai
     const { data: fileData, error: fileError } = await supabase
       .from("files")
-      .select("id")
+      .select("id,name")
       .eq("id", file_id)
       .eq("owner_id", ownerId)
       .single();
@@ -195,6 +196,20 @@ export const shareItem = async (req, res) => {
 
     // 3. Unique link generate karein
     const shareLink = `${backendUrl}/api/files/shared/${data[0].share_link_id}`;
+
+    // 4. Email Send
+    try {
+      await sendShareEmail({
+        toEmail: email,
+        sharedByEmail: req.user.email,
+        fileName: fileData.name,
+        shareLink,
+        permission,
+      });
+    } catch (emailError) {
+      console.error("Email send failed:", emailError.message);
+      // Email fail ho toh bhi share success return karo
+    }
 
     res.status(201).json({
       message: "Item shared successfully",
