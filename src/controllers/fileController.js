@@ -117,16 +117,23 @@ export const uploadFile = async (req, res) => {
 export const getUserFiles = async (req, res) => {
   try {
     const userId = req.user.id;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = parseInt(req.query.offset) || 0;
 
-    const { data, error } = await supabase
+    const { data, error, count } = await supabase
       .from("files")
-      .select("*")
-      .eq("owner_id", userId) // Sirf usi user ki files fetch karega jo logged in hai
-      .order("created_at", { ascending: false }); // Latest files pehle dikhayega
+      .select("*", { count: "exact" })
+      .eq("owner_id", userId)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
-    res.status(200).json({ files: data });
+    res.status(200).json({
+      files: data,
+      total: count,
+      hasMore: offset + limit < count,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
