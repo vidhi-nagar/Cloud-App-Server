@@ -1,14 +1,6 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // 465 ke liye true, 587 ke liye false
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const sendShareEmail = async ({
   toEmail,
@@ -17,8 +9,8 @@ export const sendShareEmail = async ({
   shareLink,
   permission,
 }) => {
-  const mailOptions = {
-    from: `"CloudVault" <${process.env.EMAIL_USER}>`,
+  await resend.emails.send({
+    from: "CloudVault <onboarding@resend.dev>", // free plan mein yahi use karo
     to: toEmail,
     subject: `${sharedByEmail} ne aapke saath ek file share ki hai`,
     html: `
@@ -44,7 +36,5 @@ export const sendShareEmail = async ({
         </div>
       </div>
     `,
-  };
-
-  await transporter.sendMail(mailOptions);
+  });
 };
