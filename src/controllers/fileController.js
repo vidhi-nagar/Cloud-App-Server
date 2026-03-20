@@ -213,6 +213,32 @@ export const getStorageStats = async (req, res) => {
   }
 };
 
+export const toggleStar = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const { data: current } = await supabase
+      .from("files")
+      .select("is_starred")
+      .eq("id", id)
+      .eq("owner_id", userId)
+      .single();
+
+    const { data, error } = await supabase
+      .from("files")
+      .update({ is_starred: !current.is_starred })
+      .eq("id", id)
+      .eq("owner_id", userId)
+      .select();
+
+    if (error) throw error;
+    res.status(200).json({ message: "Star updated", item: data[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // 3. Permanent Delete: DB aur Storage dono se hatana
 export const permanentDelete = async (req, res) => {
   try {

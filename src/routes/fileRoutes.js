@@ -31,6 +31,7 @@ router.get("/trash", protect, getTrashItems);
 router.get("/my-files", protect, getUserFiles);
 router.patch("/trash/:id", protect, moveToTrash);
 router.patch("/restore/:id", protect, restoreItem);
+router.patch("/star/:id", protect, toggleStar);
 router.delete("/:id", protect, deleteFile);
 router.post("/share", protect, shareItem);
 router.get("/share/secure/:file_id", protect, getSecureLink);
