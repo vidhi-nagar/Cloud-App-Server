@@ -56,16 +56,26 @@ export const renameItem = async (req, res) => {
         .eq("id", id)
         .single();
 
-      // Same folder mein same naam ka koi aur item check karo
-      const { data: existing } = await supabase
+      let duplicateQuery = supabase
         .from("files")
         .select("id")
         .eq("owner_id", userId)
         .eq("name", newName.trim())
-        .eq("parent_id", currentItem.parent_id)
         .eq("is_deleted", false)
-        .neq("id", id) // khud ko exclude karo
-        .single();
+        .neq("id", id);
+
+      // Same folder mein same naam ka koi aur item check karo
+
+      if (
+        currentItem.parent_id === null ||
+        currentItem.parent_id === undefined
+      ) {
+        duplicateQuery = duplicateQuery.is("parent_id", null);
+      } else {
+        duplicateQuery = duplicateQuery.eq("parent_id", currentItem.parent_id);
+      }
+
+      const { data: existing } = await duplicateQuery.single();
 
       if (existing) {
         return res.status(409).json({
