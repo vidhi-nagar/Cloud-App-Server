@@ -47,14 +47,35 @@ export const renameItem = async (req, res) => {
     const { newName, parent_id } = req.body;
     const userId = req.user.id;
 
-    const hasAccess = await checkPermission(id, userId, "edit");
-    if (!hasAccess) {
-      return res.status(403).json({ error: "You don't have permission" });
+    // Duplicate name check
+    if (newName) {
+      // Pehle current item ki info lo
+      const { data: currentItem } = await supabase
+        .from("files")
+        .select("parent_id, is_folder")
+        .eq("id", id)
+        .single();
+
+      // Same folder mein same naam ka koi aur item check karo
+      const { data: existing } = await supabase
+        .from("files")
+        .select("id")
+        .eq("owner_id", userId)
+        .eq("name", newName.trim())
+        .eq("parent_id", currentItem.parent_id)
+        .eq("is_deleted", false)
+        .neq("id", id) // khud ko exclude karo
+        .single();
+
+      if (existing) {
+        return res.status(409).json({
+          error: `"${newName}" naam pehle se exist karta hai is folder mein!`,
+        });
+      }
     }
 
-    // Build update object dynamically
     const updateData = {};
-    if (newName !== undefined) updateData.name = newName;
+    if (newName !== undefined) updateData.name = newName.trim();
     if (parent_id !== undefined) updateData.parent_id = parent_id || null;
 
     if (Object.keys(updateData).length === 0) {
@@ -77,7 +98,6 @@ export const renameItem = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
 export const moveToTrash = async (req, res) => {
   try {
     const { id } = req.params;
