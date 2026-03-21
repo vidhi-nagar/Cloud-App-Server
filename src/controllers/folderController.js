@@ -75,7 +75,7 @@ export const renameItem = async (req, res) => {
         duplicateQuery = duplicateQuery.eq("parent_id", currentItem.parent_id);
       }
 
-      const { data: existing } = await duplicateQuery.single();
+      const { data: existing } = await duplicateQuery.maybeSingle();
 
       if (existing) {
         return res.status(409).json({
