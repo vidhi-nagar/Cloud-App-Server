@@ -29,6 +29,28 @@ export const createFolder = async (req, res) => {
       ])
       .select();
 
+    let duplicateQuery = supabase
+      .from("files")
+      .select("id")
+      .eq("owner_id", userId)
+      .eq("name", name.trim())
+      .eq("is_folder", true)
+      .eq("is_deleted", false);
+
+    if (parent_id === null || parent_id === undefined || parent_id === "") {
+      duplicateQuery = duplicateQuery.is("parent_id", null);
+    } else {
+      duplicateQuery = duplicateQuery.eq("parent_id", parent_id);
+    }
+
+    const { data: existing } = await duplicateQuery.maybeSingle();
+
+    if (existing) {
+      return res.status(409).json({
+        error: `"${name}" naam ka folder pehle se exist karta hai!`,
+      });
+    }
+
     if (error) throw error;
 
     res
