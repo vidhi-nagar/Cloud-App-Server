@@ -12,23 +12,6 @@ export const createFolder = async (req, res) => {
     if (!name)
       return res.status(400).json({ error: "Folder name is required" });
 
-    // 🔥 FIX: Ek unique storage_key generate karein taaki database error na de
-    const uniqueKey = `folder_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-
-    const { data, error } = await supabase
-      .from("files")
-      .insert([
-        {
-          name,
-          owner_id: userId,
-          parent_id: parent_id,
-          is_folder: true,
-          mime_type: "folder",
-          storage_key: uniqueKey, // <--- Ye line add karni hai
-        },
-      ])
-      .select();
-
     let duplicateQuery = supabase
       .from("files")
       .select("id")
@@ -50,6 +33,22 @@ export const createFolder = async (req, res) => {
         error: `"${name}" naam ka folder pehle se exist karta hai!`,
       });
     }
+    // 🔥 FIX: Ek unique storage_key generate karein taaki database error na de
+    const uniqueKey = `folder_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+    const { data, error } = await supabase
+      .from("files")
+      .insert([
+        {
+          name,
+          owner_id: userId,
+          parent_id: parent_id,
+          is_folder: true,
+          mime_type: "folder",
+          storage_key: uniqueKey, // <--- Ye line add karni hai
+        },
+      ])
+      .select();
 
     if (error) throw error;
 
