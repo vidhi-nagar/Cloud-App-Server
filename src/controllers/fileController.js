@@ -95,10 +95,16 @@ export const uploadFile = async (req, res) => {
             storage_key: filePath,
             owner_id: userId,
             file_url: urlData.publicUrl,
-            parent_id: parent_id || null,
+            // parent_id: parent_id || null,
           },
         ])
         .select();
+
+      if (parent_id) {
+        query = query.eq("parent_id", parent_id);
+      } else {
+        query = query.is("parent_id", null); // ← Null ke liye .is() use karo
+      }
 
       if (dbError) throw dbError;
 
@@ -124,6 +130,7 @@ export const getUserFiles = async (req, res) => {
       .from("files")
       .select("*", { count: "exact" })
       .eq("owner_id", userId)
+      .eq("is_deleted", false)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
